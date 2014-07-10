@@ -358,13 +358,27 @@ Delaunay.prototype = {
 						console.log( "addedPoint[ " + j + " ] is inside tetras[ " + i + " ]" );
 						console.log( "we should flip the faces of " );
 						console.log( this.tetras[i] );
-						console.log( this.tetras[i].i1 );
+						var whichIndex;
+						if ( j-4 === this.tetras[i].i1 ) whichIndex = "i1";
+						else if ( j-4 === this.tetras[i].i2 ) whichIndex = "i2";
+						else if ( j-4 === this.tetras[i].i3 ) whichIndex = "i3";
+						else if ( j-4 === this.tetras[i].i4 ) whichIndex = "i4";
 						console.log( " ... and ... " );
 						for ( k in this.tetras ){
-							if ( k != i && ( this.tetras[k].i1===j || this.tetras[k].i2===j || this.tetras[k].i3===j || this.tetras[k].i4===j ) ){
-								console.log( " other tetra to flip: tetras[ " + k + " ]" );
-								console.log( this.tetras[k].i1 );
-								console.log( this.tetras[k] );
+							console.log( "k: " + k + " and i: " + i );
+							if ( k != i ){
+								console.log( "k: " + k + " and i: " + i );
+								var sameVertexCount = 0;
+								if ( this.tetras[k].i1===this.tetras[i].i1 || this.tetras[k].i2===this.tetras[i].i1 || this.tetras[k].i3===this.tetras[i].i1 || this.tetras[k].i4===this.tetras[i].i1 ) sameVertexCount++;
+								if ( this.tetras[k].i1===this.tetras[i].i2 || this.tetras[k].i2===this.tetras[i].i2 || this.tetras[k].i3===this.tetras[i].i2 || this.tetras[k].i4===this.tetras[i].i2 ) sameVertexCount++;
+								if ( this.tetras[k].i1===this.tetras[i].i3 || this.tetras[k].i2===this.tetras[i].i3 || this.tetras[k].i3===this.tetras[i].i3 || this.tetras[k].i4===this.tetras[i].i3 ) sameVertexCount++;
+								if ( this.tetras[k].i1===this.tetras[i].i4 || this.tetras[k].i2===this.tetras[i].i4 || this.tetras[k].i3===this.tetras[i].i4 || this.tetras[k].i4===this.tetras[i].i4 ) sameVertexCount++;
+							
+								if ( sameVertexCount >= 3 ){
+									console.log( "sameVertexCount: " + sameVertexCount );
+									console.log( " other tetra to flip: tetras[ " + k + " ]" );
+									console.log( this.tetras[k] );
+								}
 							}
 						}
 					}
