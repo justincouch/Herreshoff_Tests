@@ -17,6 +17,7 @@ var hullMirror2;
 
 var geometry = new THREE.BoxGeometry( 1, 1, 1 );
 var material = new THREE.MeshBasicMaterial( { color: 0xff00ff, wireframe: true } );
+var flippingMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true, wireframeLinewidth: 3 } );
 //var hullmaterial = new THREE.MeshBasicMaterial( { color: 0xffffff } );
 var hullmaterial = new THREE.MeshDepthMaterial( );
 //hullmaterial.side = THREE.DoubleSide;
@@ -232,7 +233,7 @@ Delaunay = function( points ){
 	this.addedPoints = [];
 	this.tetras = [];
 	this.pointCounter = 0;
-	this.RADIUSDIFFTHRESHOLD = 0.0001;
+	this.RADIUSDIFFTHRESHOLD = 0.00001;
 }
 
 Delaunay.prototype = {
@@ -343,9 +344,10 @@ Delaunay.prototype = {
 
 	,
 
-	checkLocalDelaunay: function( callback ){
+	checkLocalDelaunay: function(){
 		// go backwards through tetras
 		// if any point is within another's circumsphere, flip the shared face of the tetras
+		var flipping = false;
 		for ( var i=this.tetras.length-1; i>=0; i-- ){
 			for ( var j=4; j<this.addedPoints.length; j++ ){
 				// containsPoint uses <=
@@ -365,29 +367,128 @@ Delaunay.prototype = {
 						else if ( j-4 === this.tetras[i].i4 ) whichIndex = "i4";
 						console.log( " ... and ... " );
 						for ( k in this.tetras ){
-							console.log( "k: " + k + " and i: " + i );
+							//console.log( "k: " + k + " and i: " + i );
 							if ( k != i ){
-								console.log( "k: " + k + " and i: " + i );
+								//console.log( "k: " + k + " and i: " + i );
 								var sameVertexCount = 0;
-								if ( this.tetras[k].i1===this.tetras[i].i1 || this.tetras[k].i2===this.tetras[i].i1 || this.tetras[k].i3===this.tetras[i].i1 || this.tetras[k].i4===this.tetras[i].i1 ) sameVertexCount++;
-								if ( this.tetras[k].i1===this.tetras[i].i2 || this.tetras[k].i2===this.tetras[i].i2 || this.tetras[k].i3===this.tetras[i].i2 || this.tetras[k].i4===this.tetras[i].i2 ) sameVertexCount++;
-								if ( this.tetras[k].i1===this.tetras[i].i3 || this.tetras[k].i2===this.tetras[i].i3 || this.tetras[k].i3===this.tetras[i].i3 || this.tetras[k].i4===this.tetras[i].i3 ) sameVertexCount++;
-								if ( this.tetras[k].i1===this.tetras[i].i4 || this.tetras[k].i2===this.tetras[i].i4 || this.tetras[k].i3===this.tetras[i].i4 || this.tetras[k].i4===this.tetras[i].i4 ) sameVertexCount++;
+								var sharedVerts = [];
+								var sharedVertIndices = [];
+								if ( this.tetras[k].i1===this.tetras[i].i1 || this.tetras[k].i2===this.tetras[i].i1 || this.tetras[k].i3===this.tetras[i].i1 || this.tetras[k].i4===this.tetras[i].i1 ) { sameVertexCount++; sharedVerts.push( this.tetras[i].v1 ); sharedVertIndices.push( this.tetras[i].i1 ); }
+								if ( this.tetras[k].i1===this.tetras[i].i2 || this.tetras[k].i2===this.tetras[i].i2 || this.tetras[k].i3===this.tetras[i].i2 || this.tetras[k].i4===this.tetras[i].i2 ) { sameVertexCount++; sharedVerts.push( this.tetras[i].v2 ); sharedVertIndices.push( this.tetras[i].i2 ); }
+								if ( this.tetras[k].i1===this.tetras[i].i3 || this.tetras[k].i2===this.tetras[i].i3 || this.tetras[k].i3===this.tetras[i].i3 || this.tetras[k].i4===this.tetras[i].i3 ) { sameVertexCount++; sharedVerts.push( this.tetras[i].v3 ); sharedVertIndices.push( this.tetras[i].i3 ); }
+								if ( this.tetras[k].i1===this.tetras[i].i4 || this.tetras[k].i2===this.tetras[i].i4 || this.tetras[k].i3===this.tetras[i].i4 || this.tetras[k].i4===this.tetras[i].i4 ) { sameVertexCount++; sharedVerts.push( this.tetras[i].v4 ); sharedVertIndices.push( this.tetras[i].i4 ); }
 							
 								if ( sameVertexCount >= 3 ){
 									console.log( "sameVertexCount: " + sameVertexCount );
 									console.log( " other tetra to flip: tetras[ " + k + " ]" );
 									console.log( this.tetras[k] );
+									this.tetras[k].markAsFlipping();
+									this.tetras[i].markAsFlipping();
+									flipping = true;
+									this.flipSharedFace( i, k, sharedVerts, sharedVertIndices );
+									break;
 								}
 							}
+							if ( flipping === true ) break;
 						}
+						if ( flipping === true ) break;
 					}
+					if ( flipping === true ) break;
 				}
+				if ( flipping === true ) break;
 			}
+			if ( flipping === true ) break;
 		}
+		//if ( flipping === true ) this.checkLocalDelaunay();
 	}
 
+	,
 
+	flipSharedFace: function( i, k, sharedVerts, sharedVertIndices ){
+		console.log( "flipping " + i + " and " + k );
+		console.log( "with shared verts: " );
+		console.log( sharedVertIndices );
+		console.log( sharedVerts );
+		
+		var ivertindices = [];
+		ivertindices.push( this.tetras[i].i1 );
+		ivertindices.push( this.tetras[i].i2 );
+		ivertindices.push( this.tetras[i].i3 );
+		ivertindices.push( this.tetras[i].i4 );
+
+		var iverts = [];
+		iverts.push( this.tetras[i].v1 );
+		iverts.push( this.tetras[i].v2 );
+		iverts.push( this.tetras[i].v3 );
+		iverts.push( this.tetras[i].v4 );
+
+		var kvertindices = [];
+		kvertindices.push( this.tetras[k].i1 );
+		kvertindices.push( this.tetras[k].i2 );
+		kvertindices.push( this.tetras[k].i3 );
+		kvertindices.push( this.tetras[k].i4 );
+
+		var kverts = [];
+		kverts.push( this.tetras[k].v1 );
+		kverts.push( this.tetras[k].v2 );
+		kverts.push( this.tetras[k].v3 );
+		kverts.push( this.tetras[k].v4 );
+
+		console.log( "ivertindices: " );
+		console.log( ivertindices );
+		console.log( "iverts:" );
+		console.log( iverts );
+		console.log( "kvertindices: " );
+		console.log( kvertindices );
+		console.log( "kverts:" );
+		console.log( kverts );
+
+		var iNotSharedIndex;
+		var iNotSharedVert;
+		var kNotSharedIndex;
+		var kNotSharedVert;
+
+		for ( iv in ivertindices ){
+			if ( iverts[iv] != sharedVerts[0] && iverts[iv] != sharedVerts[1] && iverts[iv] != sharedVerts[2] && iverts[iv] != sharedVerts[3] ){
+				iNotSharedVert = iverts[iv];
+			}
+			if ( ivertindices[iv] != sharedVertIndices[0] && ivertindices[iv] != sharedVertIndices[1] && ivertindices[iv] != sharedVertIndices[2] && ivertindices[iv] != sharedVertIndices[3] ){
+				iNotSharedIndex = ivertindices[iv];
+			}
+			if ( kverts[iv] != sharedVerts[0] && kverts[iv] != sharedVerts[1] && kverts[iv] != sharedVerts[2] && kverts[iv] != sharedVerts[3] ){
+				kNotSharedVert = kverts[iv];
+			}
+			if ( kvertindices[iv] != sharedVertIndices[0] && kvertindices[iv] != sharedVertIndices[1] && kvertindices[iv] != sharedVertIndices[2] && kvertindices[iv] != sharedVertIndices[3] ){
+				kNotSharedIndex = kvertindices[iv];
+			}
+		}
+		console.log( "iNotSharedIndex: " + iNotSharedIndex + ", kNotSharedIndex: " + kNotSharedIndex );
+		console.log( "iNotSharedVert: " );
+		console.log( iNotSharedVert );
+		console.log( "kNotSharedVert: " );
+		console.log( kNotSharedVert );
+
+		this.tetras[i].removeScreenRemnants();
+		this.tetras[k].removeScreenRemnants();
+
+		if ( i > k ){
+			this.tetras.splice( i, 1 );
+			this.tetras.splice( k, 1 );
+		} else {
+			this.tetras.splice( k, 1 );
+			this.tetras.splice( i, 1 );
+		}
+
+		var newTetra1 = new Tetrahedron( iNotSharedVert, kNotSharedVert, sharedVerts[0], sharedVerts[1], iNotSharedIndex, kNotSharedIndex, sharedVertIndices[0], sharedVertIndices[1] );
+		var newTetra2 = new Tetrahedron( iNotSharedVert, kNotSharedVert, sharedVerts[1], sharedVerts[2], iNotSharedIndex, kNotSharedIndex, sharedVertIndices[1], sharedVertIndices[2] );
+		var newTetra3 = new Tetrahedron( iNotSharedVert, kNotSharedVert, sharedVerts[2], sharedVerts[0], iNotSharedIndex, kNotSharedIndex, sharedVertIndices[2], sharedVertIndices[0] );
+
+		this.tetras.push( newTetra1 );
+		this.tetras.push( newTetra2 );
+		this.tetras.push( newTetra3 );
+
+		//this.checkLocalDelaunay();
+	}
 }
 
 
@@ -415,7 +516,7 @@ Tetrahedron = function( v1, v2, v3, v4, i1, i2, i3, i4 ){
 
 	this.cc = new THREE.Mesh( new THREE.SphereGeometry( this.circumsphere.radius, 64, 64 ), hullmaterial );
 	this.cc.position = this.circumsphere.center;
-	scene.add( this.cc );
+	//scene.add( this.cc );
 
 	this.v1sphere = new THREE.Mesh( new THREE.SphereGeometry( 0.2, 16, 16), hullmaterial );
 	this.v1sphere.position = this.v1;
@@ -430,16 +531,18 @@ Tetrahedron = function( v1, v2, v3, v4, i1, i2, i3, i4 ){
 	this.v4sphere.position = this.v4;
 	scene.add( this.v4sphere );
 
-	var tg = new THREE.Geometry();
-	tg.vertices.push( v1 );
-	tg.vertices.push( v2 );
-	tg.vertices.push( v3 );
-	tg.vertices.push( v4 );
-	tg.faces.push( new THREE.Face3( 0, 1, 2 ) );
-	tg.faces.push( new THREE.Face3( 1, 2, 3 ) );
-	tg.faces.push( new THREE.Face3( 2, 3, 0 ) );
-	tg.faces.push( new THREE.Face3( 3, 0, 1 ) );
-	this.tetraFaces = new THREE.Mesh( tg, material );
+	this.tetrageometry = new THREE.Geometry();
+	this.tetrageometry.vertices.push( v1 );
+	this.tetrageometry.vertices.push( v2 );
+	this.tetrageometry.vertices.push( v3 );
+	this.tetrageometry.vertices.push( v4 );
+
+	// don't draw the connections to super tetra
+	if ( i1 >= 0 && i2 >= 0 && i3 >= 0 ) this.tetrageometry.faces.push( new THREE.Face3( 0, 1, 2 ) );
+	if ( i2 >= 0 && i3 >= 0 && i4 >= 0 ) this.tetrageometry.faces.push( new THREE.Face3( 1, 2, 3 ) );
+	if ( i3 >= 0 && i4 >= 0 && i1 >= 0 ) this.tetrageometry.faces.push( new THREE.Face3( 2, 3, 0 ) );
+	if ( i4 >= 0 && i1 >= 0 && i2 >= 0 ) this.tetrageometry.faces.push( new THREE.Face3( 3, 0, 1 ) );
+	this.tetraFaces = new THREE.Mesh( this.tetrageometry, material );
 	scene.add( this.tetraFaces );
 	//scene.add( cc );
 }
@@ -503,6 +606,22 @@ Tetrahedron.prototype = {
 		scene.remove( this.v3sphere );
 		scene.remove( this.v4sphere );
 		scene.remove( this.cc );
+	}
+
+	,
+
+	markAsFlipping: function(){
+		scene.remove( this.tetraFaces );
+		this.tetraFaces = new THREE.Mesh( this.tetrageometry, flippingMaterial );
+		scene.add( this.tetraFaces );
+	}
+
+	,
+
+	markAsNormal: function(){
+		scene.remove( this.tetraFaces );
+		this.tetraFaces = new THREE.Mesh( this.tetrageometry, material );
+		scene.add( this.tetraFaces );
 	}
 
 }
